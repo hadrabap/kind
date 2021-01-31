@@ -78,6 +78,7 @@ func planCreation(cfg *config.Cluster, networkName string) (createContainerFuncs
 	}
 
 	// plan normal nodes
+	var nodeId = 0
 	for i, node := range cfg.Nodes {
 		node := node.DeepCopy() // copy so we can modify
 		name := names[i]
@@ -94,6 +95,9 @@ func planCreation(cfg *config.Cluster, networkName string) (createContainerFuncs
 			}
 		}
 
+		var nodeIp = fmt.Sprintf("172.18.0.1%d", nodeId)
+		nodeId = nodeId + 1
+
 		// plan actual creation based on role
 		switch node.Role {
 		case config.ControlPlaneRole:
@@ -105,7 +109,7 @@ func planCreation(cfg *config.Cluster, networkName string) (createContainerFuncs
 						ContainerPort: common.APIServerInternalPort,
 					},
 				)
-				args, err := runArgsForNode(node, cfg.Networking.IPFamily, name, genericArgs)
+				args, err := runArgsForNode(node, cfg.Networking.IPFamily, name, nodeIp, genericArgs)
 				if err != nil {
 					return err
 				}
@@ -113,7 +117,7 @@ func planCreation(cfg *config.Cluster, networkName string) (createContainerFuncs
 			})
 		case config.WorkerRole:
 			createContainerFuncs = append(createContainerFuncs, func() error {
-				args, err := runArgsForNode(node, cfg.Networking.IPFamily, name, genericArgs)
+				args, err := runArgsForNode(node, cfg.Networking.IPFamily, name, nodeIp, genericArgs)
 				if err != nil {
 					return err
 				}
@@ -213,7 +217,7 @@ func commonArgs(cluster string, cfg *config.Cluster, networkName string, nodeNam
 	return args, nil
 }
 
-func runArgsForNode(node *config.Node, clusterIPFamily config.ClusterIPFamily, name string, args []string) ([]string, error) {
+func runArgsForNode(node *config.Node, clusterIPFamily config.ClusterIPFamily, name string, nodeIp string, args []string) ([]string, error) {
 	args = append([]string{
 		"run",
 		"--hostname", name, // make hostname match container name
@@ -239,6 +243,7 @@ func runArgsForNode(node *config.Node, clusterIPFamily config.ClusterIPFamily, n
 		"--volume", "/var",
 		// some k8s things want to read /lib/modules
 		"--volume", "/lib/modules:/lib/modules:ro",
+		"--ip", nodeIp,
 	},
 		args...,
 	)
