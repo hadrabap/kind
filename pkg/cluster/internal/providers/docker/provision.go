@@ -18,7 +18,6 @@ package docker
 
 import (
 	"fmt"
-	"math"
 	"net"
 	"path/filepath"
 	"regexp"
@@ -423,7 +422,7 @@ func findFirstUnallocatedIpv4(lastFoundIp string, netMaskBits int, allocatedAddr
 		return "", errors.Wrapf(err, "Failed to parse last found IP")
 	}
 
-	netMask := int(math.Pow(2, float64(netMaskBits))) - 1
+	netMask := (1 << (32 - netMaskBits)) - 1
 	begin := (ip & netMask) + 1
 	currentNet := ip & (^netMask)
 	for i := begin; i < netMask; i++ {
